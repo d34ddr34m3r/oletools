@@ -143,30 +143,32 @@ def ParseArea(expression):
     if row1Relative:
         row1indicator = '~'
     else:
-        row1indicator = ''
+        row1indicator = '$'
         row1 += 1
     if col1Relative:
         col1indicator = '~'
     else:
-        col1indicator = ''
+        col1indicator = '$'
         col1 += 1
     if row2Relative:
         row2indicator = '~'
     else:
-        row2indicator = ''
+        row2indicator = '$'
         row2 += 1
     if col2Relative:
         col2indicator = '~'
     else:
-        col2indicator = ''
+        col2indicator = '$'
         col2 += 1
 
     if row1 == row2 and col2 >= 256:
-        return 'R%s%d' % (row1indicator, row1)
+        # return 'R%s%d' % (row1indicator, row1)
+        return f'{row1indicator}{row1}'
     if col1 == col2 and row2 >= 65536:
-        return 'C%s%d' % (col1indicator, col1)
-
-    return 'R%s%dC%s%d' % (row1indicator, row1, col1indicator, col1)
+        # return 'C%s%d' % (col1indicator, col1)
+        return f'{col1indicator}{Int2ColumnId(col1)}'
+    # return 'R%s%dC%s%d' % (row1indicator, row1, col1indicator, col1)
+    return f'{col1indicator}{Int2ColumnId(col1)}{row1indicator}{row1:d}'
 
 
 # https://docs.microsoft.com/en-us/openspecs/office_file_formats/ms-xls/6e5eed10-5b77-43d6-8dd0-37345f8654ad
@@ -179,14 +181,15 @@ def ParseLocRelU(expression):
     if rowRelative:
         rowindicator = '~'
     else:
-        rowindicator = ''
+        rowindicator = '$'
         row += 1
     if colRelative:
         colindicator = '~'
     else:
-        colindicator = ''
+        colindicator = '$'
         column += 1
-    return 'R%s%dC%s%d' % (rowindicator, row, colindicator, column)
+    # return 'R%s%dC%s%d' % (rowindicator, row, colindicator, column)
+    return f'{colindicator}{Int2ColumnId(column)}{rowindicator}{row:d}'
 
 
 # https://docs.microsoft.com/en-us/openspecs/office_file_formats/ms-xls/6e5eed10-5b77-43d6-8dd0-37345f8654ad
