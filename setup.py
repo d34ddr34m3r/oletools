@@ -33,7 +33,7 @@ to install this package.
 # 2019-05-23 v0.55 PL: - added pcodedmp as dependency
 # 2019-09-24       PL: - removed oletools.thirdparty.DridexUrlDecoder
 # 2019-11-10       PL: - changed pyparsing from 2.2.0 to 2.1.0 for issue #481
-
+# 2020-04-23 v0.56dev6 - Harli Aquino - slightly modified to add XLM parser
 #--- TODO ---------------------------------------------------------------------
 
 
@@ -52,7 +52,7 @@ import os, fnmatch
 #--- METADATA -----------------------------------------------------------------
 
 name         = "oletools"
-version      = '0.56dev5'
+version      = '0.56dev6'
 desc         = "Python tools to analyze security characteristics of MS Office and OLE files (also called Structured Storage, Compound File Binary Format or Compound Document File Format), for Malware Analysis and Incident Response #DFIR"
 long_desc    = open('oletools/README.rst').read()
 author       = "Philippe Lagadec"
