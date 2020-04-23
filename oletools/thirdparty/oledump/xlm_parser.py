@@ -47,7 +47,7 @@ def xlm_parse(lines, show_formula):
         # __logger__.warning('SKIPPING TO NEXT CELL')
         while True:
             col, row = caller[1:].split('$')
-            last_caller = f'${col}${int(row) + 1}'
+            last_caller = '${}${}'.format(col, int(row) + 1)
             if last_caller in call_stack:
                 caller = last_caller
                 continue
@@ -56,7 +56,7 @@ def xlm_parse(lines, show_formula):
         return last_caller
 
     if caller is not None:
-        message = f'[{caller_type}] ={caller}'
+        message = '[{}] ={}'.format(caller_type, caller)
         # __logger__.debug(message)
     else:
         message = 'No auto-executable cell found. Using first Formula as entry-point.'
@@ -66,7 +66,7 @@ def xlm_parse(lines, show_formula):
                 caller = cell_id
                 break
     result.append('===============================================================================')
-    result.append(f' {__app_name__} {__version__} by Harli Aquino <github.com/d34ddr34m3r>')
+    result.append(' {} {} by Harli Aquino <github.com/d34ddr34m3r>'.format(__app_name__, __version__))
     result.append('-------------------------------------------------------------------------------')
     result.append(message)
     halt = False
@@ -93,8 +93,8 @@ def xlm_parse(lines, show_formula):
                 raw_formula = formula
                 for cell_ref in re.compile(r'([~$][A-Z]+[~$]\d+)', re.S).findall(formula):
                     if cell_ref.replace('~', '$') in cells and 'string' in cells[cell_ref.replace('~', '$')]:
-                        formula = formula.replace(f"{cell_ref} ", f'"{cells[cell_ref.replace("~", "$")]["string"]}" ')
-                        formula = formula.replace(f"{cell_ref},", f'"{cells[cell_ref.replace("~", "$")]["string"]}",')
+                        formula = formula.replace("{} ".format(cell_ref), '"{}" '.format(cells[cell_ref.replace("~", "$")]["string"]))
+                        formula = formula.replace("{},".format(cell_ref), '"{}",'.format(cells[cell_ref.replace("~", "$")]["string"]))
                 if '=FORMULA' in formula:
                     formula = formula.replace('" & "', '')
                 caller = next_cell()
@@ -105,9 +105,9 @@ def xlm_parse(lines, show_formula):
             if show_formula:
                 formula_text = formula.replace("~", "").replace("$", "").replace(" ", "")
                 formula_text = re.sub(r'^=FORMULA\((.*?),[a-zA-Z]+\d+\)', r'=\1', formula_text)
-                message = f'{formula_text}{"[" + formula_string + "]" if formula_string is not None else ""}'
+                message = '{}{}'.format(formula_text, "[" + formula_string + "]" if formula_string is not None else "")
             else:
-                message = f'{formula.replace("~", "").replace("$", "").replace(" ", "")}{"[" + formula_string + "]" if formula_string is not None else ""}'
+                message = '{}{}'.format(formula.replace("~", "").replace("$", "").replace(" ", ""), "[" + formula_string + "]" if formula_string is not None else "")
             # print(message)
             result.append(message)
             if halt:
