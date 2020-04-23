@@ -25,25 +25,37 @@ __version__ = 0.1
 cell_id_ptn = re.compile(r'\[(\$[A-Z]+\$\d+) len=\d+\]', re.S)
 cell_value_ptn = re.compile(r'\[\[ "?(.*?)"? \]\]', re.S)
 builtin_ptn = re.compile(r'Builtin - (\w+)', re.S)
-run_ptn = re.compile(r'=(?:RUN|GOTO)\((.*)\)', re.S)
+label_ptn = re.compile(r'String Constant - (.*?) \[\[')
+label_call_ptn = re.compile(r'^=(.*?)\(')
+run_ptn = re.compile(r'=(?:RUN|GOTO|EXEC)\((.*)\)', re.S)
 last_caller = None
 caller = None
 call_stack = []
+global_labels = {}
 
 
 def xlm_parse(lines, show_formula):
-    global caller, last_caller
+    global caller, last_caller, call_stack, global_labels
+    caller = None
+    last_caller = None
+    call_stack = []
+    global_labels = {}
     max_empty_cells = 10
     cells = {}
     result = []
 
     for line in lines:
         try:
-            if 'LABEL :' in line and 'Builtin -' in line:
+            if 'LABEL :' in line:
                 cell_ref = cell_value_ptn.search(line)
-                if cell_ref is not None:
-                    caller = cell_ref.group(1).replace('=', '')
+                if 'Builtin -' in line:
+                    if cell_ref is not None:
+                        caller = cell_ref.group(1).replace('=', '')
                     caller_type = builtin_ptn.search(line).group(1)
+                else:
+                    if cell_ref is not None:
+                        label = label_ptn.search(line).group(1)
+                        global_labels[label] = cell_ref.group(1).replace('=', '')
             elif 'FORMULA :' in line:
                 cell_id = cell_id_ptn.search(line).group(1)
                 cells[cell_id] = {'formula': cell_value_ptn.search(line).group(1)}
@@ -114,7 +126,14 @@ def xlm_parse(lines, show_formula):
             elif formula in ['=HALT()', '=RETURN()']:
                 halt = True
             else:
-                caller = next_cell()
+                caller_label = label_call_ptn.search(formula)
+                if caller_label is not None:
+                    caller_label = caller_label.group(1)
+                if caller_label is not None and caller_label in global_labels:
+                    call_stack.append(caller)
+                    caller = global_labels[caller_label]
+                else:
+                    caller = next_cell()
             if show_formula:
                 formula_text = formula.replace("~", "").replace("$", "").replace(" ", "")
                 formula_text = re.sub(r'^=FORMULA\((.*?),[a-zA-Z]+\d+\)', r'=\1', formula_text)
