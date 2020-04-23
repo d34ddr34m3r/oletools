@@ -3360,7 +3360,10 @@ class VBA_Parser(object):
             if self.xlm_macros:
                 vba_code = ''
                 for line in self.xlm_macros:
-                    vba_code += "' " + line + '\n'
+                    try:
+                        vba_code += "' " + line + '\n'
+                    except UnicodeDecodeError:
+                        vba_code += "' " + line.decode('iso-8859-1') + '\n'
                 yield ('xlm_macro', 'xlm_macro', 'xlm_macro.txt', vba_code)
             # Analyse the VBA P-code to detect VBA stomping:
             # If stomping is detected, add a fake VBA module with the P-code as source comments
