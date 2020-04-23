@@ -163,12 +163,12 @@ def ParseArea(expression):
 
     if row1 == row2 and col2 >= 256:
         # return 'R%s%d' % (row1indicator, row1)
-        return f'{row1indicator}{row1}'
+        return '{}{}'.format(row1indicator, row1)
     if col1 == col2 and row2 >= 65536:
         # return 'C%s%d' % (col1indicator, col1)
-        return f'{col1indicator}{Int2ColumnId(col1)}'
+        return '{}{}'.format(col1indicator, Int2ColumnId(col1))
     # return 'R%s%dC%s%d' % (row1indicator, row1, col1indicator, col1)
-    return f'{col1indicator}{Int2ColumnId(col1)}{row1indicator}{row1:d}'
+    return '{}{}{}{:d}'.format(col1indicator, Int2ColumnId(col1), row1indicator, row1)
 
 
 # https://docs.microsoft.com/en-us/openspecs/office_file_formats/ms-xls/6e5eed10-5b77-43d6-8dd0-37345f8654ad
@@ -189,7 +189,7 @@ def ParseLocRelU(expression):
         colindicator = '$'
         column += 1
     # return 'R%s%dC%s%d' % (rowindicator, row, colindicator, column)
-    return f'{colindicator}{Int2ColumnId(column)}{rowindicator}{row:d}'
+    return '{}{}{}{:d}'.format(colindicator, Int2ColumnId(column), rowindicator, row)
 
 
 # https://docs.microsoft.com/en-us/openspecs/office_file_formats/ms-xls/6e5eed10-5b77-43d6-8dd0-37345f8654ad
@@ -211,7 +211,7 @@ def ParseLoc(expression):
         colindicator = '$'
     column += 1
     # return 'R%s%dC%s%d' % (rowindicator, row, colindicator, column)
-    return f'{colindicator}{Int2ColumnId(column)}{rowindicator}{row:d}'
+    return '{}{}{}{:d}'.format(colindicator, Int2ColumnId(column), rowindicator, row)
 
 
 dTokens = {
@@ -1428,16 +1428,16 @@ def ParseExpression(expression):
         if ptgid in dTokens:
             # result += dTokens[ptgid] + ' '
             if ptgid in dMathOps:  # ptgAdd, ptsSub, ptgMul, ptgDiv
-                math_exp = f' {dMathOps.get(ptgid, "UNKNOWN_MATH_OP")} '.join(args[-2:])
+                math_exp = ' {} '.format(dMathOps.get(ptgid, "UNKNOWN_MATH_OP")).join(args[-2:])
                 args = args[:-2]
                 args.append(math_exp)
                 continue
             elif ptgid in dStringOps:  # ptgConcat
-                string_exp = f' {dStringOps.get(ptgid, "UNKNOWN_STRING_OP")} '.join(args)
+                string_exp = ' {} '.format(dStringOps.get(ptgid, "UNKNOWN_STRING_OP")).join(args)
                 args = [string_exp]
                 continue
             elif ptgid in dLogicalOps:
-                logic_exp = f' {dLogicalOps.get(ptgid, "UNKNOWN_LOGICAL_OP")} '.join(args[-2:])
+                logic_exp = ' {} '.format(dLogicalOps.get(ptgid, "UNKNOWN_LOGICAL_OP")).join(args[-2:])
                 args = args[:-2]
                 args.append(logic_exp)
             elif ptgid == 0x17:  # ptgStr https://docs.microsoft.com/en-us/openspecs/office_file_formats/ms-xls/87c2a057-705c-4473-a168-6d5fac4a9eba
@@ -1447,8 +1447,8 @@ def ParseExpression(expression):
                     length *= 2  # doublebyte check: https://docs.microsoft.com/en-us/openspecs/office_file_formats/ms-xls/05162858-0ca9-44cb-bb07-a720928f63f8
                 expression = expression[1:]
                 str_value = P23Decode(expression[:length]).encode("unicode_escape").decode().replace('\\x00', '')
-                result += f'"{str_value}"'
-                args.append(f'"{str_value}"')
+                result += '"{}"'.format(str_value)
+                args.append('"{}"'.format(str_value))
                 expression = expression[length:]
             elif ptgid == 0x19:
                 grbit = P23Ord(expression[0])
@@ -1475,7 +1475,7 @@ def ParseExpression(expression):
                 func_name = dFunctions.get(functionid, '*UNKNOWN FUNCTION*')
                 # result += '%s (0x%04x) ' % (func_name, functionid)
                 expression = expression[2:]
-                formula = f'{func_name}({", ".join(args[-1:])})'
+                formula = '{}({})'.format(func_name, ", ".join(args[-1:]))
                 args = args[:-1]
                 args.append(formula)
             elif ptgid in [0x22, 0x42, 0x62]:  # 0x22: 'ptgFuncVar', 0x42: 'ptgFuncVarV', 0x62: 'ptgFuncVarA'
@@ -1487,7 +1487,7 @@ def ParseExpression(expression):
                     arg_count = -2
                 else:
                     arg_count = 0 - len(args)
-                formula = f'{func_name}({", ".join(args[arg_count:])})'
+                formula = '{}({})'.format(func_name, ", ".join(args[arg_count:]))
                 args = args[:arg_count]
                 args.append(formula)
                 if functionid == 0x806D:
@@ -1511,7 +1511,7 @@ def ParseExpression(expression):
                 formatsize = struct.calcsize(formatcodes)
                 row, column = struct.unpack(formatcodes, expression[0:formatsize])
                 expression = expression[formatsize:]
-                result += f'${Int2ColumnId(column + 1)}{row + 1}'
+                result += '${}{}'.format(Int2ColumnId(column + 1), row + 1)
             elif ptgid == 0x24 or ptgid == 0x44:
                 # result += '%s ' % ParseLocRelU(expression)
                 cell_id = ParseLocRelU(expression)
@@ -1541,7 +1541,7 @@ def ParseExpression(expression):
             break
     if expression == b'':
         if args is not None:
-            result += f'[[ ={"".join(args)} ]]'
+            result += '[[ ={} ]]'.format("".join(args))
         return result
     else:
         functions = [dFunctions[functionid] for functionid in [0x6E, 0x95] if ContainsWP23Ord(functionid, expression)]
@@ -1574,7 +1574,10 @@ class SheetName(object):
     @property
     def sheetname_ascii(self):
         if self.__sheetname_ascii__ is None:
-            self.__sheetname_ascii__ = self.__data__[0x08:].decode()
+            try:
+                self.__sheetname_ascii__ = self.__data__[0x08:].decode()
+            except UnicodeDecodeError:
+                self.__sheetname_ascii__ = self.__data__[0x08:].decode('iso-8859-1')
         return self.__sheetname_ascii__
 
 
@@ -1644,7 +1647,7 @@ class cBIFF(cPluginParent):
                         macro_cells[column + 1] = {}
                     expr_code = ParseExpression(expression)
                     macro_cells[column + 1][row + 1] = expr_code
-                    line += f' - [${Int2ColumnId(column + 1)}${row + 1} len={length}] {expr_code}'
+                    line += ' - [${}${} len={}] {}'.format(Int2ColumnId(column + 1), row + 1, length, expr_code)
                     if options.formulabytes:
                         data_hex = P23Decode(binascii.b2a_hex(data))
                         spaced_data_hex = ' '.join(a + b for a, b in zip(data_hex[::2], data_hex[1::2]))
