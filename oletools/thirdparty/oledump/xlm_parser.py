@@ -1,7 +1,18 @@
 #!/usr/bin/env python
 # History:
 #   2020-04-07 - initial development
-from pathlib import Path
+try:
+    from pathlib import Path
+except ImportError:
+    import os
+
+
+    class Path(object):
+        def __init__(self, path):
+            self.path = path
+
+        def parent(self):
+            return os.path.dirname(self.path)
 import re
 
 __app_name__ = 'xlm_parse'
@@ -55,6 +66,8 @@ def xlm_parse(lines, show_formula):
         call_stack.append(last_caller)
         return last_caller
 
+    if not len(cells):
+        return []
     if caller is not None:
         message = '[{}] ={}'.format(caller_type, caller)
         # __logger__.debug(message)
