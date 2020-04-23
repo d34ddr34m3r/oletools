@@ -15,7 +15,7 @@ except ImportError:
             return os.path.dirname(self.path)
 import re
 
-__app_name__ = 'xlm_parse'
+__app_name__ = 'xlm_parser'
 __app_home__ = Path(__file__).parent
 __author__ = 'Harli Aquino <maharlito.aquino@cyren.com>'
 __github__ = 'https://github.com/d34ddr34m3r'
