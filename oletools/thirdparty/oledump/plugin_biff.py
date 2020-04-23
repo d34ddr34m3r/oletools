@@ -1446,7 +1446,10 @@ def ParseExpression(expression):
                 if P23Ord(expression[0]) == 1:  # if 1, then double byte chars
                     length *= 2  # doublebyte check: https://docs.microsoft.com/en-us/openspecs/office_file_formats/ms-xls/05162858-0ca9-44cb-bb07-a720928f63f8
                 expression = expression[1:]
-                str_value = P23Decode(expression[:length]).encode("unicode_escape").decode().replace('\\x00', '')
+                try:
+                    str_value = P23Decode(expression[:length]).encode("unicode_escape").decode().replace('\\x00', '')
+                except UnicodeDecodeError:
+                    str_value = P23Decode(expression[:length])
                 result += '"{}"'.format(str_value)
                 args.append('"{}"'.format(str_value))
                 expression = expression[length:]
@@ -1663,7 +1666,7 @@ class cBIFF(cPluginParent):
                     if 'builtin' in option_flags:
                         line += ' - {} {}'.format(dBuiltinNames.get(data[15]), ParseExpression(data[16:]))
                     else:
-                        line += ' - %s' % P23Decode(data[14:14 + data[3]])
+                        line += ' - %s' % P23Decode(data[14:14 + P23Ord(data[3])])
 
                 # FILEPASS record
                 if opcode == 0x2f:
@@ -1671,12 +1674,12 @@ class cBIFF(cPluginParent):
 
                 # BOUNDSHEET record
                 if opcode == 0x85 and len(data) >= 6:
-                    if data[5] == 1:
+                    if P23Ord(data[5]) == 1:
                         macros4Found = True
                     sheetname = SheetName(data).sheetname_ascii
                     if macros4Found and data[4] > 0:
-                        suspicious_sheets[sheetname] = (dSheetType.get(data[5], '%02x' % data[5]), dSheetState.get(data[4], '%02x' % data[4]))
-                    line += ' - %s, %s - %s' % (dSheetType.get(data[5], '%02x' % data[5]), dSheetState.get(data[4], '%02x' % data[4]), sheetname)
+                        suspicious_sheets[sheetname] = (dSheetType.get(P23Ord(data[5]), '%02x' % P23Ord(data[5])), dSheetState.get(P23Ord(data[4]), '%02x' % P23Ord(data[4])))
+                    line += ' - %s, %s - %s' % (dSheetType.get(P23Ord(data[5]), '%02x' % P23Ord(data[5])), dSheetState.get(P23Ord(data[4]), '%02x' % P23Ord(data[4])), sheetname)
 
                 # STRING record
                 if opcode == 0x207 and len(data) >= 4:
