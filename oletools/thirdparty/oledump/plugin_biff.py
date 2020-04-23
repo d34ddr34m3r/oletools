@@ -144,22 +144,22 @@ def ParseArea(expression):
         row1indicator = '~'
     else:
         row1indicator = '$'
-        row1 += 1
+    row1 += 1
     if col1Relative:
         col1indicator = '~'
     else:
         col1indicator = '$'
-        col1 += 1
+    col1 += 1
     if row2Relative:
         row2indicator = '~'
     else:
         row2indicator = '$'
-        row2 += 1
+    row2 += 1
     if col2Relative:
         col2indicator = '~'
     else:
         col2indicator = '$'
-        col2 += 1
+    col2 += 1
 
     if row1 == row2 and col2 >= 256:
         # return 'R%s%d' % (row1indicator, row1)
@@ -182,12 +182,12 @@ def ParseLocRelU(expression):
         rowindicator = '~'
     else:
         rowindicator = '$'
-        row += 1
+    row += 1
     if colRelative:
         colindicator = '~'
     else:
         colindicator = '$'
-        column += 1
+    column += 1
     # return 'R%s%dC%s%d' % (rowindicator, row, colindicator, column)
     return '{}{}{}{:d}'.format(colindicator, Int2ColumnId(column), rowindicator, row)
 
@@ -1417,11 +1417,15 @@ dOpcodes = {
     0x8ca: 'MKREXT : Extension information for markers in Mac Office 11'
 }
 dDefinedNames = namedtuple('DefinedName', 'OptionFlags KeyboardShortcut NameLength FormulaDataSize GlobalNameOrExternSheet GlobalNameOrIndex MenuTextLen DescTextLen HelpTopicLen StatusBarTextLen')
+labels = {}
+label_index = 0
 
 
 def ParseExpression(expression):
+    global labels, label_index
     result = ''
     args = []
+    label = None
     while len(expression) > 0:
         ptgid = P23Ord(expression[0])
         expression = expression[1:]
@@ -1484,6 +1488,8 @@ def ParseExpression(expression):
             elif ptgid in [0x22, 0x42, 0x62]:  # 0x22: 'ptgFuncVar', 0x42: 'ptgFuncVarV', 0x62: 'ptgFuncVarA'
                 functionid = P23Ord(expression[1]) + P23Ord(expression[2]) * 0x100
                 func_name = dFunctions.get(functionid, '*UNKNOWN FUNCTION*')
+                if functionid == 0xff and label is not None:  # UserDefinedFunction
+                    func_name = label
                 # result += 'args %d func %s (0x%04x) ' % (P23Ord(expression[0]), func_name, functionid)
                 expression = expression[3:]
                 if functionid == 0x8060:  # FORMULA
@@ -1493,18 +1499,22 @@ def ParseExpression(expression):
                 formula = '{}({})'.format(func_name, ", ".join(args[arg_count:]))
                 args = args[:arg_count]
                 args.append(formula)
-                if functionid == 0x806D:
+                if functionid == 0x806D:  # SELECT
                     expression = expression[9:]
-            elif ptgid == 0x23:  # ptgName https://docs.microsoft.com/en-us/openspecs/office_file_formats/ms-xls/5f05c166-dfe3-4bbf-85aa-31c09c0258c0
-                result += '0x%08x ' % (struct.unpack('<I', expression[0:4]))
+            elif ptgid in [0x23, 0x43, 0x63]:  # ptgName, ptgNameV, ptgNameA -  https://docs.microsoft.com/en-us/openspecs/office_file_formats/ms-xls/5f05c166-dfe3-4bbf-85aa-31c09c0258c0
+                # ptgDataType = (ptgid & 0xf0) >> 0x05
+                label_id = struct.unpack('<I', expression[0:4])[0]
+                label = labels[label_id]
+                # result += '0x%08x ' % (label_id)
                 expression = expression[4:]
-            elif ptgid == 0x1f:
+
+            elif ptgid == 0x1f:  # ptgNum
                 float_value = expression[0] + expression[1] * 0x100
                 # result += '%d ' % (float_value)
                 # result += 'FLOAT '
                 expression = expression[8:]
                 args.append(str(float_value))
-            elif ptgid == 0x26:
+            elif ptgid in [0x26, 0x46, 0x66]:  # ptgMemArea, ptgMemAreaV, ptgMemAreaA
                 ## expression = expression[4:]
                 ## expression = expression[P23Ord(expression[0]) + P23Ord(expression[1]) * 0x100:]
                 expression = expression[6:]
@@ -1515,22 +1525,22 @@ def ParseExpression(expression):
                 row, column = struct.unpack(formatcodes, expression[0:formatsize])
                 expression = expression[formatsize:]
                 result += '${}{}'.format(Int2ColumnId(column + 1), row + 1)
-            elif ptgid == 0x24 or ptgid == 0x44:
+            elif ptgid in [0x24, 0x44, 0x64]:  # ptgRef, ptgRefV, ptgRefA
                 # result += '%s ' % ParseLocRelU(expression)
-                cell_id = ParseLocRelU(expression)
+                cell_id = ParseLoc(expression)
                 expression = expression[4:]
                 args.append(cell_id)
             elif ptgid == 0x11:  # ptgRange
                 pass
-            elif ptgid == 0x25:  # ptgArea
+            elif ptgid in [0x25, 0x45, 0x65]:  # ptgArea, ptgAreaV, ptgAreaA
                 result += '%s ' % ParseArea(expression[0:8])
                 expression = expression[8:]
-            elif ptgid == 0x3A or ptgid == 0x5A:
+            elif ptgid in [0x3A, 0x5A, 0x7a]:  # ptgRef3d, ptgRef3dV, ptgRef3dA
                 # result += '%s ' % ParseLoc(expression[2:])
                 cell_id = ParseLoc(expression[2:])
                 expression = expression[6:]
                 args.append(cell_id)
-            elif ptgid == 0x39:  # PtgNameX
+            elif ptgid in [0x39, 0x59, 0x79]:  # PtgNameX, PtgNameXV, PtgNameXA
                 expression = expression[2:]
                 formatcodes = 'H'
                 formatsize = struct.calcsize(formatcodes)
@@ -1595,6 +1605,9 @@ class cBIFF(cPluginParent):
         self.ran = False
 
     def Analyze(self):
+        global labels, label_index
+        labels = {}
+        label_index = 0
         result = []
         suspicious_sheets = {}
         macro_cells = {}
@@ -1664,9 +1677,14 @@ class cBIFF(cPluginParent):
                     if 'funcgroup' in option_flags:
                         line += ' - {}'.format(dFuncGroup.get(option_flags.get('funcgroup')))
                     if 'builtin' in option_flags:
-                        line += ' - {} {}'.format(dBuiltinNames.get(data[15]), ParseExpression(data[16:]))
+                        label = dBuiltinNames.get(P23Ord(data[15]))
+                        cell_id = ParseExpression(data[16:])
                     else:
-                        line += ' - %s' % P23Decode(data[14:14 + P23Ord(data[3])])
+                        label = P23Decode(data[15:15 + P23Ord(data[3])])
+                        cell_id = ParseExpression(data[15 + P23Ord(data[3]):])
+                    line += ' - {} {}'.format(label, cell_id)
+                    label_index += 1
+                    labels[label_index] = label
 
                 # FILEPASS record
                 if opcode == 0x2f:
