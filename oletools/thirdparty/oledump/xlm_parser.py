@@ -115,6 +115,7 @@ def xlm_parse(lines, show_formula):
         else:
             caller = next_cell()
             max_empty_cells -= 1
+    caller, last_caller, call_stack = None, None, []
     return result
 
 
