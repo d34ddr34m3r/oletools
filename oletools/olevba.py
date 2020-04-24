@@ -2097,9 +2097,12 @@ def filter_vba(vba_code):
     :param vba_code: str, VBA source code
     :return: str, filtered VBA source code
     """
+    if isinstance(vba_code, bytes):
+        vba_code = vba_code.decode('iso-8859-1')
     vba_lines = vba_code.splitlines()
     start = 0
     for line in vba_lines:
+
         if line.startswith("Attribute VB_") and not ':' in line:
             start += 1
         else:
@@ -3407,6 +3410,8 @@ class VBA_Parser(object):
                 self.vba_code_all_modules = ''
                 for (_, _, _, vba_code) in self.extract_all_macros():
                     #TODO: filter code? (each module)
+                    if isinstance(vba_code, bytes):
+                        vba_code = vba_code.decode('iso-8859-1')
                     self.vba_code_all_modules += vba_code + '\n'
                 for (_, _, form_string) in self.extract_form_strings():
                     self.vba_code_all_modules += form_string + '\n'
@@ -3729,6 +3734,8 @@ class VBA_Parser(object):
             # TODO: add a method to get all VBA code as one string
             vba_code_all_modules = ''
             for (_, _, _, vba_code) in self.extract_all_macros():
+                if isinstance(vba_code, bytes):
+                    vba_code = vba_code.decode('iso-8859-1')
                 vba_code_all_modules += vba_code + '\n'
             for keyword in keywords:
                 if keyword not in vba_code_all_modules:
